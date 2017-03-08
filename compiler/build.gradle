@@ -1,11 +1,60 @@
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.google.auto.service:auto-service:1.0-rc3'
     compile 'com.squareup:javapoet:1.8.0'
-    compile project(':annotation')
+//    compile project(':annotation')
+    compile 'com.adamzfc.router:annotation:0.0.1'
 }
 
 //sourceCompatibility = "1.7"
 //targetCompatibility = "1.7"
+def libraryGroupId = 'com.adamzfc.router'
+def libraryArtifactId = 'compiler'
+def libraryVersion = '0.0.1'
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId libraryGroupId
+            artifactId libraryArtifactId
+            artifact sourcesJar
+            artifact javadocJar
+            version libraryVersion
+        }
+    }
+}
+
+bintray {
+    user = "${bintray_user}"
+    key = "${bintray_key}"
+    publications = ['mavenJava']
+    pkg {
+        repo = 'maven'
+        name = 'router-compiler'
+        desc = 'ActivityRouter Compiler'
+        issueTrackerUrl = 'https://github.com/adamzfc/ActivityRouter/issues'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/adamzfc/ActivityRouter'
+        websiteUrl = 'https://github.com/adamzfc/ActivityRouter'
+        version {
+            name = libraryVersion
+            desc = libraryVersion
+            vcsTag = 'v' + libraryVersion
+        }
+    }
+}

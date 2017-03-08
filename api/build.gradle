@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
 
 android {
     compileSdkVersion 25
@@ -28,5 +30,78 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:25.0.1'
     testCompile 'junit:junit:4.12'
-    compile project(':annotation')
+//    compile project(':annotation')
+    compile 'com.adamzfc.router:annotation:0.0.1'
+}
+
+def libraryGroupId = 'com.adamzfc.router'
+def libraryArtifactId = 'api'
+def libraryVersion = '0.0.1'
+
+task androidJavadocs(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
+    classifier = "javadoc"
+    from androidJavadocs.destinationDir
+}
+task androidSourcesJar(type: Jar) {
+    classifier = "sources"
+    from android.sourceSets.main.java.srcDirs
+}
+
+publishing {
+    publications {
+        aar(MavenPublication) {
+            groupId libraryGroupId
+            version libraryVersion
+            artifactId libraryArtifactId
+            artifact androidSourcesJar
+            artifact androidJavadocsJar
+            artifact("$buildDir/outputs/aar/${artifactId}-release.aar")
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                //Iterate over the compile dependencies (we don't want the test ones), adding a <dependency> node for each
+                configurations.compile.allDependencies.each {
+                    if(it.group != null && (it.name != null || "unspecified".equals(it.name)) && it.version != null)
+                    {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+
+//        mavenJava(MavenPublication) {
+//            groupId libraryGroupId
+//            artifactId libraryArtifactId
+//            artifact androidSourcesJar
+//            artifact androidJavadocsJar
+//            version libraryVersion
+//        }
+    }
+}
+
+bintray {
+    user = "${bintray_user}"
+    key = "${bintray_key}"
+    publications = ['aar']
+//    publications = ['mavenJava']
+    pkg {
+        repo = 'maven'
+        name = 'router-api'
+        desc = 'ActivityRouter Api'
+        issueTrackerUrl = 'https://github.com/adamzfc/ActivityRouter/issues'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/adamzfc/ActivityRouter'
+        websiteUrl = 'https://github.com/adamzfc/ActivityRouter'
+        version {
+            name = libraryVersion
+            desc = libraryVersion
+            vcsTag = 'v' + libraryVersion
+        }
+    }
 }
